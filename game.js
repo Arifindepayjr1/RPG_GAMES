@@ -1,1 +1,1 @@
-ECHO is on.
+const readline = require("readline-sync");
