@@ -1,0 +1,112 @@
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+body {
+    margin: 0px;
+    padding: 0px;
+    box-sizing: border-box;
+    overflow: hidden;
+    height: 100vh; 
+    background-image: url("../game-menu/assets/Art.gif");
+    background-repeat: no-repeat;
+    background-position: center center;
+    background-attachment: fixed;
+    background-size: cover;
+    font-family: "Press Start 2P";
+}
+
+/* Title with intense red glowing shadow effect */
+#title , #newTitle{
+    color: white;
+    font-size: 350%;
+    letter-spacing: 0.2em;
+    font-weight: bold;
+    padding: 20px;
+    position: relative;
+    text-align: left;
+    right: 15px;
+    width: 600px;
+    margin: 50px;
+    text-shadow: 
+        0 0 10px rgba(255, 0, 0, 0.8), 
+        0 0 30px rgba(255, 0, 0, 0.8), 
+        0 0 50px rgba(255, 0, 0, 0.8), 
+        0 0 70px rgba(255, 0, 0, 1), 
+        0 0 100px rgba(255, 0, 0, 1);
+    animation: flicker 3s infinite alternate, pulse 1.5s infinite ease-in-out;
+}
+
+/* Flickering effect */
+@keyframes flicker {
+    0% {
+        text-shadow: 
+            0 0 10px rgba(255, 0, 0, 0.8), 
+            0 0 30px rgba(255, 0, 0, 0.8), 
+            0 0 50px rgba(255, 0, 0, 0.8), 
+            0 0 70px rgba(255, 0, 0, 1), 
+            0 0 100px rgba(255, 0, 0, 1);
+    }
+    50% {
+        text-shadow: 
+            0 0 5px rgba(255, 0, 0, 0.8), 
+            0 0 15px rgba(255, 0, 0, 0.8), 
+            0 0 25px rgba(255, 0, 0, 0.8);
+    }
+    100% {
+        text-shadow: 
+            0 0 20px rgba(255, 0, 0, 0.8), 
+            0 0 40px rgba(255, 0, 0, 0.8), 
+            0 0 60px rgba(255, 0, 0, 0.8);
+    }
+}
+
+/* Pulsing effect */
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.1);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+/* Game menu items with shadow effect */
+.game-menu {
+    text-align: left;
+    color: white;
+    width: 600px;
+    padding: 20px;
+    margin-left: 50px;
+    -moz-user-select: none;
+    -webkit-user-select: none;
+    user-select: none;
+    font-size: 24px;
+    text-shadow: 
+        0 0 5px rgba(255, 0, 0, 0.8), 
+        0 0 15px rgba(255, 0, 0, 0.8);
+    transition: all 0.3s ease;
+}
+
+/* Hover effect for menu items */
+.game-menu:hover {
+    color: red;
+    text-shadow: 
+        0 0 10px rgba(255, 0, 0, 1), 
+        0 0 30px rgba(255, 0, 0, 1), 
+        0 0 50px rgba(255, 0, 0, 1);
+    cursor: pointer;
+}
+
+/* Version text */
+#version {
+    color: white;
+    position: fixed;
+    padding: 20px;
+    margin: 20px;
+    width: 140px;
+    font-size: 18px;
+    left: 1340px;
+    bottom: -15px;
+}
