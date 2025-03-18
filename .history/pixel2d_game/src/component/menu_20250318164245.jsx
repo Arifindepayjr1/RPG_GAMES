@@ -25,7 +25,7 @@ const Menu = ({ onStartGame }) => {
       case "Play":
         element.innerHTML = "Entering the Abyss...";
         console.log("Play clicked, calling onStartGame");
-        if (onStartGame) onStartGame();
+        if (onStartGame) onStartGame(); // Ensure it’s defined before calling
         break;
       case "Options":
         element.innerHTML = "Adjusting Reality...";

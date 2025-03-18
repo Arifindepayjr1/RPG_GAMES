@@ -1,7 +1,7 @@
 import React, { useState } from "react";
-import Menu from "./component/menu";
-import Tilemap1 from "./component/tilemap1";
-import "./App.css";
+import Menu from "./component/menu"; // Lowercase 'menu' matches your structure
+import Tilemap1 from "./component/tilemap1"; // Lowercase 'tilemap1' matches your structure
+import "./App.css"; // If you have styling for App
 
 const App = () => {
   const [isGameStarted, setIsGameStarted] = useState(false);

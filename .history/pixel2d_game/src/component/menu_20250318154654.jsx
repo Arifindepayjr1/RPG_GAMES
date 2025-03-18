@@ -2,15 +2,12 @@ import React, { useState } from "react";
 import "./menustyle.css";
 
 const Menu = ({ onStartGame }) => {
-  const [menu, setMenu] = useState("main");
+  const [menu, setMenu] = useState("main"); // "main" or "newGame"
 
-  console.log("Menu rendered, onStartGame prop:", onStartGame);
-
+  // Function to handle text change
   const changeText = (event) => {
     const element = event.target;
     const originalText = element.innerHTML;
-
-    console.log("changeText called with:", originalText);
 
     switch (originalText) {
       case "New Game":
@@ -24,8 +21,7 @@ const Menu = ({ onStartGame }) => {
         break;
       case "Play":
         element.innerHTML = "Entering the Abyss...";
-        console.log("Play clicked, calling onStartGame");
-        if (onStartGame) onStartGame();
+        onStartGame(); // Instant transition, no delay
         break;
       case "Options":
         element.innerHTML = "Adjusting Reality...";
@@ -37,6 +33,7 @@ const Menu = ({ onStartGame }) => {
         element.innerHTML = "Game Over...";
     }
 
+    // Reset text after 2 seconds (except for Play)
     if (originalText !== "Play") {
       setTimeout(() => {
         element.innerHTML = originalText;
@@ -44,19 +41,20 @@ const Menu = ({ onStartGame }) => {
     }
   };
 
+  // Function to show new game menu
   const startNewGame = () => {
-    console.log("startNewGame called, switching to newGame");
     setMenu("newGame");
   };
 
+  // Function to close the website
   const exitGame = () => {
-    console.log("exitGame called, attempting to close window");
-    window.close();
+    window.close(); // Attempt to close the window
   };
 
   return (
     <div>
       {menu === "main" ? (
+        // Main Menu
         <div className="main-menu">
           <h1 id="title">TREYVISAI</h1>
           <h2 className="game-menu" onClick={startNewGame}>
@@ -70,6 +68,7 @@ const Menu = ({ onStartGame }) => {
           </h2>
         </div>
       ) : (
+        // New Game Menu
         <div className="main-menu">
           <h1 id="newTitle">TREYVISAI</h1>
           <h2 className="game-menu" onClick={changeText}>

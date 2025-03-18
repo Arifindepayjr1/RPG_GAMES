@@ -1,13 +1,12 @@
 @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 
-/* Apply background and base styles only to the menu */
-.main-menu {
+body {
     margin: 0px;
     padding: 0px;
     box-sizing: border-box;
     overflow: hidden;
-    height: 100vh;
-    background-image: url("./asset/assets/Art.gif");
+    height: 100vh; 
+    background-image: url("../../src/component/asset/assets/Art.gif");
     background-repeat: no-repeat;
     background-position: center center;
     background-attachment: fixed;
@@ -16,7 +15,7 @@
 }
 
 /* Title with intense red glowing shadow effect */
-#title, #newTitle {
+#title , #newTitle{
     color: white;
     font-size: 350%;
     letter-spacing: 0.2em;
@@ -110,16 +109,4 @@
     font-size: 18px;
     left: 1330px;
     bottom: -20px;
-}
-/* Version text */
-#version {
-    color: white;
-    position: fixed;
-    padding: 20px;
-    margin: 20px;
-    width: 140px;
-    font-size: 18px;
-    left: 1330px;
-    bottom: -20px;
-    font-family: "Press Start 2P";
 }

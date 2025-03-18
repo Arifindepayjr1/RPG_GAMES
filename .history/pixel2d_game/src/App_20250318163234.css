@@ -1,0 +1,7 @@
+body {
+  margin: 0;
+  padding: 0;
+  background: black; /* Or any color you prefer for the tilemap background */
+  height: 100vh;
+  overflow: hidden;
+}

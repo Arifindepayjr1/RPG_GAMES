@@ -111,15 +111,3 @@
     left: 1330px;
     bottom: -20px;
 }
-/* Version text */
-#version {
-    color: white;
-    position: fixed;
-    padding: 20px;
-    margin: 20px;
-    width: 140px;
-    font-size: 18px;
-    left: 1330px;
-    bottom: -20px;
-    font-family: "Press Start 2P";
-}
