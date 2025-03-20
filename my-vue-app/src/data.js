@@ -5,7 +5,7 @@ export const SPRITE_HEIGHT = 64;
 export const BORDER_WIDTH = 2;
 export const SPACING_WIDTH = 2;
 export const CHARACTER_DISPLAY_SIZE = 96;
-export const CHARACTER_SPEED = 10;
+export const CHARACTER_SPEED = 2;
 export const TRANSITION_COOLDOWN = 1000;
 
 export const blockingBaseTiles = [1, 2, 3, 4, 5, 6, 7, 8, 13, 16, 21, 22, 23, 31, 32, 36, 57, 59, 60, 77, 89];

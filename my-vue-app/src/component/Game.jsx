@@ -1,11 +1,10 @@
 // src/components/Game.jsx
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { TILE_SIZE, map1, overlayLayer1, secondOverlayLayer1, map2, overlayLayer2, secondOverlayLayer2, map3, overlayLayer3, secondOverlayLayer3, tilePositions, SPRITE_WIDTH, SPRITE_HEIGHT, BORDER_WIDTH, SPACING_WIDTH, CHARACTER_DISPLAY_SIZE, blockingBaseTiles, blockingItemIDs, TRANSITION_COOLDOWN } from '../data';
 
 const Game = () => {
   const canvasRef = useRef(null);
-  const [currentMap, setCurrentMap] = useState('tilemap1');
-  const [character, setCharacter] = useState({
+  const characterRef = useRef({
     x: 0 * TILE_SIZE, // Spawn at row 15, col 0 in tilemap1
     y: 15 * TILE_SIZE,
     frameX: 0,
@@ -15,22 +14,22 @@ const Game = () => {
     isFighting: false,
     moving: false,
   });
-  const keysRef = useRef({ w: false, s: false, a: false, d: false, j: false }); // Use ref for instant updates
-  const [transitioning, setTransitioning] = useState(false);
-  const [transitionAlpha, setTransitionAlpha] = useState(0);
-  const [transitionFadeIn, setTransitionFadeIn] = useState(false);
-  const [lastTransitionTime, setLastTransitionTime] = useState(0);
-  const lastFrameTime = useRef(performance.now());
+  const keysRef = useRef({ w: false, s: false, a: false, d: false, j: false });
+  const currentMapRef = useRef('tilemap1');
+  const transitioningRef = useRef(false);
+  const transitionAlphaRef = useRef(0);
+  const transitionFadeInRef = useRef(false);
+  const lastTransitionTimeRef = useRef(0);
 
   const tileset = new Image();
   tileset.src = '/222.png';
   const spriteSheet = new Image();
   spriteSheet.src = '/hero.png';
 
-  const CHARACTER_SPEED = 900; // Pixels per second
+  const CHARACTER_SPEED = 2.5; // Lowered from 15 to 10 (600 pixels/second at 60 FPS)
 
   const getCurrentMapData = () => {
-    switch (currentMap) {
+    switch (currentMapRef.current) {
       case 'tilemap1': return { map: map1, overlay: overlayLayer1, secondOverlay: secondOverlayLayer1, grassTile: 12 };
       case 'tilemap2': return { map: map2, overlay: overlayLayer2, secondOverlay: secondOverlayLayer2, grassTile: 15 };
       case 'tilemap3': return { map: map3, overlay: overlayLayer3, secondOverlay: secondOverlayLayer3, grassTile: 15 };
@@ -57,77 +56,71 @@ const Game = () => {
   };
 
   const checkMapTransition = () => {
-    const tileX = Math.floor(character.x / TILE_SIZE);
-    const tileY = Math.floor(character.y / TILE_SIZE);
+    const tileX = Math.floor(characterRef.current.x / TILE_SIZE);
+    const tileY = Math.floor(characterRef.current.y / TILE_SIZE);
     const currentTime = Date.now();
 
-    if (currentTime - lastTransitionTime < TRANSITION_COOLDOWN) return;
+    if (currentTime - lastTransitionTimeRef.current < TRANSITION_COOLDOWN) return;
 
-    if (currentMap === 'tilemap1') {
+    if (currentMapRef.current === 'tilemap1') {
       if (tileY === 2 && tileX === 24) {
         startTransition('tilemap2', 4, 12);
-        setLastTransitionTime(currentTime);
+        lastTransitionTimeRef.current = currentTime;
       } else if (tileY === 19 && tileX === 14) {
         startTransition('tilemap3', 8, 3);
-        setLastTransitionTime(currentTime);
+        lastTransitionTimeRef.current = currentTime;
       }
-    } else if (currentMap === 'tilemap2') {
+    } else if (currentMapRef.current === 'tilemap2') {
       if (tileY === 3 && tileX === 12) {
         startTransition('tilemap1', 3, 24);
-        setLastTransitionTime(currentTime);
+        lastTransitionTimeRef.current = currentTime;
       }
-    } else if (currentMap === 'tilemap3') {
+    } else if (currentMapRef.current === 'tilemap3') {
       if (tileY === 8 && tileX === 3) {
         startTransition('tilemap1', 18, 14);
-        setLastTransitionTime(currentTime);
+        lastTransitionTimeRef.current = currentTime;
       }
     }
   };
 
   const startTransition = (targetMap, spawnRow, spawnCol) => {
-    if (transitioning) return;
-    setTransitioning(true);
-    setTransitionAlpha(0);
-    setTransitionFadeIn(false);
+    if (transitioningRef.current) return;
+    transitioningRef.current = true;
+    transitionAlphaRef.current = 0;
+    transitionFadeInRef.current = false;
     setTimeout(() => {
-      setCurrentMap(targetMap);
-      setCharacter(prev => ({ ...prev, x: spawnCol * TILE_SIZE, y: spawnRow * TILE_SIZE }));
-      setTransitionFadeIn(true);
+      currentMapRef.current = targetMap;
+      characterRef.current.x = spawnCol * TILE_SIZE;
+      characterRef.current.y = spawnRow * TILE_SIZE;
+      transitionFadeInRef.current = true;
     }, 500);
   };
 
   const updateTransition = () => {
-    if (!transitioning) return;
+    if (!transitioningRef.current) return;
 
-    if (!transitionFadeIn) {
-      setTransitionAlpha(prev => Math.min(prev + 0.05, 1));
+    if (!transitionFadeInRef.current) {
+      transitionAlphaRef.current = Math.min(transitionAlphaRef.current + 0.05, 1);
     } else {
-      setTransitionAlpha(prev => {
-        const newAlpha = prev - 0.05;
-        if (newAlpha <= 0) setTransitioning(false);
-        return newAlpha;
-      });
+      transitionAlphaRef.current -= 0.05;
+      if (transitionAlphaRef.current <= 0) transitioningRef.current = false;
     }
   };
 
   useEffect(() => {
     const handleKeyDown = (e) => {
       const key = e.key.toLowerCase();
-      if (key in keysRef.current) {
-        keysRef.current[key] = true;
-        console.log(`Key down: ${key}`); // Debug input
-      }
-      if (key === 'j' && !character.isFighting) {
-        setCharacter(prev => ({ ...prev, isFighting: true, frameY: 6, frameX: 0 }));
+      if (key in keysRef.current) keysRef.current[key] = true;
+      if (key === 'j' && !characterRef.current.isFighting) {
+        characterRef.current.isFighting = true;
+        characterRef.current.frameY = 6;
+        characterRef.current.frameX = 0;
       }
     };
 
     const handleKeyUp = (e) => {
       const key = e.key.toLowerCase();
-      if (key in keysRef.current) {
-        keysRef.current[key] = false;
-        console.log(`Key up: ${key}`); // Debug input
-      }
+      if (key in keysRef.current) keysRef.current[key] = false;
     };
 
     window.addEventListener('keydown', handleKeyDown);
@@ -136,7 +129,7 @@ const Game = () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [character]);
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -212,8 +205,8 @@ const Game = () => {
     const drawCharacter = () => {
       if (!spriteSheet.complete) return;
 
-      const srcX = character.frameX * (SPRITE_WIDTH + BORDER_WIDTH + SPACING_WIDTH) + BORDER_WIDTH;
-      const srcY = character.frameY * (SPRITE_HEIGHT + BORDER_WIDTH + SPACING_WIDTH) + BORDER_WIDTH;
+      const srcX = characterRef.current.frameX * (SPRITE_WIDTH + BORDER_WIDTH + SPACING_WIDTH) + BORDER_WIDTH;
+      const srcY = characterRef.current.frameY * (SPRITE_HEIGHT + BORDER_WIDTH + SPACING_WIDTH) + BORDER_WIDTH;
       const offsetX = (TILE_SIZE - CHARACTER_DISPLAY_SIZE) / 2;
       const offsetY = (TILE_SIZE - CHARACTER_DISPLAY_SIZE) / 2;
 
@@ -221,79 +214,75 @@ const Game = () => {
         spriteSheet,
         srcX, srcY,
         SPRITE_WIDTH, SPRITE_HEIGHT,
-        character.x + offsetX, character.y + offsetY,
-        CHARACTER_DISPLAY_SIZE, CHARACTER_DISPLAY_SIZE
+        characterRef.current.x + offsetX,
+        characterRef.current.y + offsetY,
+        CHARACTER_DISPLAY_SIZE,
+        CHARACTER_DISPLAY_SIZE
       );
     };
 
-    const updateCharacter = (deltaTime) => {
-      if (transitioning) return;
+    const updateCharacter = () => {
+      if (transitioningRef.current) return;
 
-      let newX = character.x;
-      let newY = character.y;
+      let newX = characterRef.current.x;
+      let newY = characterRef.current.y;
       let isMoving = false;
 
-      const speed = CHARACTER_SPEED * deltaTime; // Time-based speed
-
       if (keysRef.current.w) {
-        newY -= speed;
-        setCharacter(prev => ({ ...prev, direction: 'up', frameY: 5 }));
+        newY -= CHARACTER_SPEED;
+        characterRef.current.direction = 'up';
+        characterRef.current.frameY = 5;
         isMoving = true;
       }
       if (keysRef.current.s) {
-        newY += speed;
-        setCharacter(prev => ({ ...prev, direction: 'down', frameY: 2 }));
+        newY += CHARACTER_SPEED;
+        characterRef.current.direction = 'down';
+        characterRef.current.frameY = 2;
         isMoving = true;
       }
       if (keysRef.current.a) {
-        newX -= speed;
-        setCharacter(prev => ({ ...prev, direction: 'left', frameY: 4 }));
+        newX -= CHARACTER_SPEED;
+        characterRef.current.direction = 'left';
+        characterRef.current.frameY = 4;
         isMoving = true;
       }
       if (keysRef.current.d) {
-        newX += speed;
-        setCharacter(prev => ({ ...prev, direction: 'right', frameY: 3 }));
+        newX += CHARACTER_SPEED;
+        characterRef.current.direction = 'right';
+        characterRef.current.frameY = 3;
         isMoving = true;
       }
 
-      if (!character.isFighting && isMoving && isWalkable(newX, newY)) {
-        setCharacter(prev => ({ ...prev, x: newX, y: newY, moving: true }));
-      } else if (isMoving) {
-        setCharacter(prev => ({ ...prev, moving: false }));
+      if (!characterRef.current.isFighting && isMoving && isWalkable(newX, newY)) {
+        characterRef.current.x = newX;
+        characterRef.current.y = newY;
+        characterRef.current.moving = true;
       } else {
-        setCharacter(prev => ({ ...prev, moving: false }));
+        characterRef.current.moving = false;
       }
 
-      setCharacter(prev => {
-        const frameCount = prev.frameCount + deltaTime * 60;
-        let frameX = prev.frameX;
-        if (prev.isFighting && frameCount >= 10) {
-          frameX = (frameX + 1) % 4;
-          if (frameX === 0) return { ...prev, frameCount: 0, frameX, isFighting: false };
-        } else if (isMoving && frameCount >= 3) {
-          frameX = (frameX + 1) % 4;
-          return { ...prev, frameCount: 0, frameX };
-        } else if (!isMoving) {
-          frameX = 0;
-        }
-        return { ...prev, frameCount };
-      });
+      characterRef.current.frameCount += 1;
+      if (characterRef.current.isFighting && characterRef.current.frameCount % 10 === 0) {
+        characterRef.current.frameX = (characterRef.current.frameX + 1) % 4;
+        if (characterRef.current.frameX === 0) characterRef.current.isFighting = false;
+      } else if (isMoving && characterRef.current.frameCount % 5 === 0) {
+        characterRef.current.frameX = (characterRef.current.frameX + 1) % 4;
+      } else if (!isMoving) {
+        characterRef.current.frameX = 0;
+      }
 
       checkMapTransition();
     };
 
-    const gameLoop = (currentTime) => {
-      const deltaTime = Math.min((currentTime - lastFrameTime.current) / 1000, 0.1); // Cap at 100ms
-      lastFrameTime.current = currentTime;
-
+    const gameLoop = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       drawTilemap();
-      updateCharacter(deltaTime);
+      updateCharacter();
       drawCharacter();
 
-      if (transitioning) {
-        ctx.fillStyle = `rgba(0, 0, 0, ${transitionAlpha})`;
+      if (transitioningRef.current) {
+        ctx.fillStyle = `rgba(0, 0, 0, ${transitionAlphaRef.current})`;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         updateTransition();
       }
@@ -312,7 +301,7 @@ const Game = () => {
     tileset.onload = startGame;
     spriteSheet.onload = startGame;
     startGame();
-  }, [character, transitioning, transitionAlpha, transitionFadeIn, currentMap]);
+  }, []);
 
   return (
     <canvas
