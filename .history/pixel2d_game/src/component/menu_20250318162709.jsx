@@ -4,8 +4,6 @@ import "./menustyle.css";
 const Menu = ({ onStartGame }) => {
   const [menu, setMenu] = useState("main");
 
-  console.log("Menu rendered, onStartGame prop:", onStartGame);
-
   const changeText = (event) => {
     const element = event.target;
     const originalText = element.innerHTML;
@@ -25,7 +23,7 @@ const Menu = ({ onStartGame }) => {
       case "Play":
         element.innerHTML = "Entering the Abyss...";
         console.log("Play clicked, calling onStartGame");
-        if (onStartGame) onStartGame();
+        onStartGame();
         break;
       case "Options":
         element.innerHTML = "Adjusting Reality...";

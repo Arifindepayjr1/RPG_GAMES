@@ -15,7 +15,7 @@ const App = () => {
 
   return (
     <div>
-      {isGameStarted ? <Tilemap1 /> : <Menu onStartGame={handleStartGame} />}
+     
     </div>
   );
 };

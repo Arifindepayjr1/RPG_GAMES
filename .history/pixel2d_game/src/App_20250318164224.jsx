@@ -15,6 +15,15 @@ const App = () => {
 
   return (
     <div>
+      {/* Fallback button to test transition */}
+      {!isGameStarted && (
+        <button
+          onClick={handleStartGame}
+          style={{ position: "absolute", top: "10px", left: "10px", zIndex: 1000 }}
+        >
+          Force Start Game
+        </button>
+      )}
       {isGameStarted ? <Tilemap1 /> : <Menu onStartGame={handleStartGame} />}
     </div>
   );
