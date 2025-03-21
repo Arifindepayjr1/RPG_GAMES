@@ -11,10 +11,9 @@ const Game = () => {
     frameY: 2,
     frameCount: 0,
     direction: 'down',
-    isFighting: false,
     moving: false,
   });
-  const keysRef = useRef({ w: false, s: false, a: false, d: false, j: false });
+  const keysRef = useRef({ w: false, s: false, a: false, d: false });
   const currentMapRef = useRef('tilemap1');
   const transitioningRef = useRef(false);
   const transitionAlphaRef = useRef(0);
@@ -26,7 +25,7 @@ const Game = () => {
   const spriteSheet = new Image();
   spriteSheet.src = '/hero.png';
 
-  const CHARACTER_SPEED = 2.5; // Lowered from 15 to 10 (600 pixels/second at 60 FPS)
+  const CHARACTER_SPEED = 1; // Kept at 1 (60 pixels/second at 60 FPS)
 
   const getCurrentMapData = () => {
     switch (currentMapRef.current) {
@@ -111,11 +110,6 @@ const Game = () => {
     const handleKeyDown = (e) => {
       const key = e.key.toLowerCase();
       if (key in keysRef.current) keysRef.current[key] = true;
-      if (key === 'j' && !characterRef.current.isFighting) {
-        characterRef.current.isFighting = true;
-        characterRef.current.frameY = 6;
-        characterRef.current.frameX = 0;
-      }
     };
 
     const handleKeyUp = (e) => {
@@ -134,7 +128,7 @@ const Game = () => {
   useEffect(() => {
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
-    ctx.imageSmoothingEnabled = false;
+    ctx.imageSmoothingEnabled = false; // Disable smoothing for pixel-perfect rendering
 
     const drawTilemap = () => {
       if (!tileset.complete) return;
@@ -210,14 +204,16 @@ const Game = () => {
       const offsetX = (TILE_SIZE - CHARACTER_DISPLAY_SIZE) / 2;
       const offsetY = (TILE_SIZE - CHARACTER_DISPLAY_SIZE) / 2;
 
+      // Round position to nearest integer to prevent sub-pixel jitter
+      const renderX = Math.round(characterRef.current.x + offsetX);
+      const renderY = Math.round(characterRef.current.y + offsetY);
+
       ctx.drawImage(
         spriteSheet,
         srcX, srcY,
         SPRITE_WIDTH, SPRITE_HEIGHT,
-        characterRef.current.x + offsetX,
-        characterRef.current.y + offsetY,
-        CHARACTER_DISPLAY_SIZE,
-        CHARACTER_DISPLAY_SIZE
+        renderX, renderY,
+        CHARACTER_DISPLAY_SIZE, CHARACTER_DISPLAY_SIZE
       );
     };
 
@@ -253,7 +249,7 @@ const Game = () => {
         isMoving = true;
       }
 
-      if (!characterRef.current.isFighting && isMoving && isWalkable(newX, newY)) {
+      if (isMoving && isWalkable(newX, newY)) {
         characterRef.current.x = newX;
         characterRef.current.y = newY;
         characterRef.current.moving = true;
@@ -262,10 +258,8 @@ const Game = () => {
       }
 
       characterRef.current.frameCount += 1;
-      if (characterRef.current.isFighting && characterRef.current.frameCount % 10 === 0) {
-        characterRef.current.frameX = (characterRef.current.frameX + 1) % 4;
-        if (characterRef.current.frameX === 0) characterRef.current.isFighting = false;
-      } else if (isMoving && characterRef.current.frameCount % 5 === 0) {
+      // Slower animation to match slower speed (every 10 frames instead of 5)
+      if (isMoving && characterRef.current.frameCount % 10 === 0) {
         characterRef.current.frameX = (characterRef.current.frameX + 1) % 4;
       } else if (!isMoving) {
         characterRef.current.frameX = 0;
@@ -275,7 +269,7 @@ const Game = () => {
     };
 
     const gameLoop = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.clearRect(0, 0, canvas.width, canvas.height); // Ensure full clear
 
       drawTilemap();
       updateCharacter();
