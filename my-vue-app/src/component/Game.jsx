@@ -26,7 +26,7 @@ const Game = () => {
   spriteSheet.src = '/hero.png';
 
   const CHARACTER_SPEED = 1; // Kept at 1 (60 pixels/second at 60 FPS)
-
+ 
   const getCurrentMapData = () => {
     switch (currentMapRef.current) {
       case 'tilemap1': return { map: map1, overlay: overlayLayer1, secondOverlay: secondOverlayLayer1, grassTile: 12 };
