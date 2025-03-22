@@ -18,7 +18,7 @@ function App() {
         justifyContent: 'center',
         alignItems: 'center',
         height: '100vh',
-        background: 'white',
+        background: 'black',
         margin: 0,
         padding: 0,
         overflow: 'hidden',

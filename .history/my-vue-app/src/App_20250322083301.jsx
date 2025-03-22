@@ -1,7 +1,7 @@
 // src/App.jsx
 import React, { useState } from 'react';
 import Game from '../src/component/Game';
-import Menu from '../src/component/menu';
+import Menu from '../src/component/';
 
 function App() {
   const [isGameStarted, setIsGameStarted] = useState(false);
@@ -18,7 +18,7 @@ function App() {
         justifyContent: 'center',
         alignItems: 'center',
         height: '100vh',
-        background: 'white',
+        background: 'gray',
         margin: 0,
         padding: 0,
         overflow: 'hidden',
