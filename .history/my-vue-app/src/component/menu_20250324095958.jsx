@@ -144,4 +144,4 @@ const Menu = ({ onStartGame, setSoundtrackRef }) => {
   );
 };
 
-export default Menu; 
+export default Menu;

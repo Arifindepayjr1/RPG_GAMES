@@ -5,24 +5,19 @@ import Menu from '../src/component/menu';
 
 function App() {
   const [isGameStarted, setIsGameStarted] = useState(false);
-  const [showMenu, setShowMenu] = useState(false);
-  const soundtrackRef = useRef(null);
+  const soundtrackRef = useRef(null); // Ref to hold the audio from Menu
 
   const handleStartGame = () => {
     console.log("handleStartGame called in App.jsx");
     setIsGameStarted(true);
   };
 
-  const handleEnterGame = () => {
-    console.log("User clicked to enter, showing menu");
-    setShowMenu(true);
-  };
-
+  // Stop the audio when the game starts
   useEffect(() => {
     if (isGameStarted && soundtrackRef.current) {
       console.log("Game started, stopping menu soundtrack");
       soundtrackRef.current.pause();
-      soundtrackRef.current.currentTime = 0;
+      soundtrackRef.current.currentTime = 0; // Reset the audio to the beginning
     }
   }, [isGameStarted]);
 
@@ -41,25 +36,13 @@ function App() {
     >
       {isGameStarted ? (
         <Game />
-      ) : showMenu ? (
+      ) : (
         <Menu
           onStartGame={handleStartGame}
           setSoundtrackRef={(audio) => {
-            soundtrackRef.current = audio;
+            soundtrackRef.current = audio; // Pass the audio ref from Menu to App
           }}
         />
-      ) : (
-        <div
-          style={{
-            textAlign: 'center',
-            color: 'black',
-            fontSize: '24px',
-            cursor: 'pointer',
-          }}
-          onClick={handleEnterGame}
-        >
-          Click to Enter
-        </div>
       )}
     </div>
   );

@@ -4,52 +4,37 @@ import "./menustyle.css";
 
 const Menu = ({ onStartGame, setSoundtrackRef }) => {
   const [menu, setMenu] = useState("main");
+  const [autoplayFailed, setAutoplayFailed] = useState(false);
   const soundtrackRef = useRef(null);
 
   console.log("Menu rendered, onStartGame prop:", onStartGame);
 
-  // Initialize and autoplay the soundtrack (unmuted) when the menu loads
+  // Initialize and autoplay the soundtrack when the menu loads
   useEffect(() => {
-    console.log("Initializing audio...");
-    soundtrackRef.current = new Audio('/jayz.mp3'); // Updated path
-    console.log("Audio object created:", soundtrackRef.current);
+    soundtrackRef.current = new Audio('../../public/Art.gif');
     soundtrackRef.current.loop = true;
     soundtrackRef.current.volume = 0.5;
-    console.log("Audio settings: loop=true, volume=0.5");
 
     // Pass the soundtrack ref to App.jsx
     if (setSoundtrackRef) {
       setSoundtrackRef(soundtrackRef.current);
-      console.log("Soundtrack ref passed to App.jsx");
     }
 
     const playSoundtrack = () => {
-      console.log("Attempting to play audio...");
       soundtrackRef.current.play()
         .then(() => {
           console.log('Menu soundtrack autoplay successful');
+          setAutoplayFailed(false);
         })
         .catch(error => {
           console.error('Menu soundtrack autoplay failed:', error);
+          setAutoplayFailed(true);
         });
     };
 
     soundtrackRef.current.addEventListener('canplaythrough', playSoundtrack);
-    console.log("Added canplaythrough event listener");
-
-    // Debug audio events
-    soundtrackRef.current.addEventListener('error', (e) => {
-      console.error('Audio error:', e);
-      console.error('Error code:', soundtrackRef.current.error?.code);
-      console.error('Error message:', soundtrackRef.current.error?.message);
-    });
-
-    soundtrackRef.current.addEventListener('loadeddata', () => {
-      console.log('Audio data loaded successfully');
-    });
 
     return () => {
-      console.log("Cleaning up audio...");
       soundtrackRef.current.removeEventListener('canplaythrough', playSoundtrack);
       soundtrackRef.current.pause();
       soundtrackRef.current = null;
@@ -106,8 +91,21 @@ const Menu = ({ onStartGame, setSoundtrackRef }) => {
     window.close();
   };
 
+  const handleEnableAudio = () => {
+    if (autoplayFailed && soundtrackRef.current) {
+      soundtrackRef.current.play()
+        .then(() => {
+          console.log('Menu soundtrack playing after user interaction');
+          setAutoplayFailed(false);
+        })
+        .catch(error => {
+          console.error('Error playing menu soundtrack after interaction:', error);
+        });
+    }
+  };
+
   return (
-    <div className="menu-container">
+    <div className="menu-container" onClick={handleEnableAudio}>
       {menu === "main" ? (
         <div className="main-menu">
           <h1 id="title">TREYVISAI</h1>
@@ -140,8 +138,26 @@ const Menu = ({ onStartGame, setSoundtrackRef }) => {
           <p id="version">V 1.0.0</p>
         </div>
       )}
+      {autoplayFailed && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            backgroundColor: 'rgba(255, 0, 0, 0.8)',
+            color: 'white',
+            padding: '10px 20px',
+            borderRadius: '5px',
+            textAlign: 'center',
+            cursor: 'pointer',
+          }}
+        >
+          Click anywhere to enable audio
+        </div>
+      )}
     </div>
   );
 };
 
-export default Menu; 
+export default Menu;
