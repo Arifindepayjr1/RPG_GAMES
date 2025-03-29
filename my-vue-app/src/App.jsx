@@ -1,7 +1,7 @@
 // src/App.jsx
-import React, { useState, useEffect, useRef } from 'react';
-import Game from '../src/component/Game';
-import Menu from '../src/component/menu';
+import React, { useState, useEffect, useRef } from "react";
+import Game from "../src/component/Game";
+import Menu from "../src/component/menu";
 
 function App() {
   const [isGameStarted, setIsGameStarted] = useState(false);
@@ -29,14 +29,14 @@ function App() {
   return (
     <div
       style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        height: '100vh',
-        background: 'white',
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        height: "100vh",
+        background: "white",
         margin: 0,
         padding: 0,
-        overflow: 'hidden',
+        overflow: "hidden",
       }}
     >
       {isGameStarted ? (
@@ -51,10 +51,10 @@ function App() {
       ) : (
         <div
           style={{
-            textAlign: 'center',
-            color: 'black',
-            fontSize: '24px',
-            cursor: 'pointer',
+            textAlign: "center",
+            color: "black",
+            fontSize: "24px",
+            cursor: "pointer",
           }}
           onClick={handleEnterGame}
         >
