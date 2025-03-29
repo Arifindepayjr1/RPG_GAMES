@@ -1,12 +1,12 @@
 // src/App.jsx
 import React, { useState, useEffect, useRef } from 'react';
-import Game from "../src/component/Game";
-import Menu from "../src/component/menu";
+import Game from '../src/components/Game';
+import Menu from "../src/";
 
 function App() {
   const [isGameStarted, setIsGameStarted] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
-  const [isExiting, setIsExiting] = useState(false); // State for exit animation
+  const [isExiting, setIsExiting] = useState(false); // New state for exit animation
   const soundtrackRef = useRef(null);
 
   const handleStartGame = () => {
@@ -24,8 +24,8 @@ function App() {
       setIsGameStarted(false);
       setShowMenu(false); // Return to "Click to Enter" screen
       setIsExiting(false); // Reset the exit state
-      // Reload the page to fully reset the app
-      window.location.reload(); // Simulates a full "exit" by reloading the app
+      // Optionally, reload the page to fully reset the app
+      window.location.reload(); // This simulates a full "exit" by reloading the app
     }, 1000); // Match this delay with the fade-out duration
   };
 

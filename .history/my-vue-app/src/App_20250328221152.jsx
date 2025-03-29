@@ -1,6 +1,6 @@
 // src/App.jsx
 import React, { useState, useEffect, useRef } from 'react';
-import Game from "../src/component/Game";
+import Game from "";
 import Menu from "../src/component/menu";
 
 function App() {

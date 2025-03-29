@@ -11,7 +11,7 @@ const Menu = ({ onStartGame, setSoundtrackRef }) => {
   // Initialize and autoplay the soundtrack (unmuted) when the menu loads
   useEffect(() => {
     console.log("Initializing audio...");
-    soundtrackRef.current = new Audio('/vannda.mp3'); // Updated path
+    soundtrackRef.current = new Audio('/jcole.mp3'); // Updated path
     console.log("Audio object created:", soundtrackRef.current);
     soundtrackRef.current.loop = true;
     soundtrackRef.current.volume = 0.5;

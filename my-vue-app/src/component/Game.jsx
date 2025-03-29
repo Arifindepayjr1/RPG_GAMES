@@ -1,8 +1,7 @@
-// src/components/Game.jsx
 import React, { useRef, useEffect, useState } from 'react';
 import { TILE_SIZE, map1, overlayLayer1, secondOverlayLayer1, map2, overlayLayer2, secondOverlayLayer2, map3, overlayLayer3, secondOverlayLayer3, tilePositions, SPRITE_WIDTH, SPRITE_HEIGHT, BORDER_WIDTH, SPACING_WIDTH, CHARACTER_DISPLAY_SIZE, blockingBaseTiles, blockingItemIDs, TRANSITION_COOLDOWN } from '../data';
 
-const Game = () => {
+const Game = ({ onExitToMenu }) => {
   const canvasRef = useRef(null);
   const characterRef = useRef({
     x: 5 * TILE_SIZE,
@@ -17,6 +16,7 @@ const Game = () => {
     targetX: 5 * TILE_SIZE,
     targetY: 15 * TILE_SIZE,
     moveProgress: 0,
+    powerBoost: 0,
   });
   const keysRef = useRef({ w: false, s: false, a: false, d: false, j: false, jPressed: false });
   const currentMapRef = useRef('tilemap1');
@@ -33,26 +33,46 @@ const Game = () => {
   const [gamePaused, setGamePaused] = useState(false);
   const [showChest, setShowChest] = useState(false);
   const [currentChest, setCurrentChest] = useState(null);
+  const [isPaused, setIsPaused] = useState(false);
+  const [isExiting, setIsExiting] = useState(false);
+  const [battleMode, setBattleMode] = useState(false);
+  const [actionCooldown, setActionCooldown] = useState(false);
+  const [battleLog, setBattleLog] = useState([]);
+  const [npcs, setNpcs] = useState([
+    { id: 'npc1', x: 18 * TILE_SIZE, y: 4 * TILE_SIZE, map: 'tilemap1', type: 'npc', name: 'Mage Anna', dialogue: 'The rift is growing! ', hasTalked: false, frameX: 0, frameY: 0 },
+    { id: 'npc2', x: 5 * TILE_SIZE, y: 6 * TILE_SIZE, map: 'tilemap1', type: 'npc', name: 'Blacksmith Ben', dialogue: 'Greetings! Have you spoken to Mage Anna?', hasTalked: false, itemToGive: { id: 2, name: 'Crystal Sword', description: 'A powerful sword forged to defeat the Rift Lord.' }, frameX: 0, frameY: 0 },
+    { id: 'boss1', x: 17 * TILE_SIZE, y: 12 * TILE_SIZE, map: 'tilemap3', type: 'boss', name: 'Rift Lord', health: 100, frameX: 0, frameY: 0, defeated: false },
+  ]);
+  const [victoryMode, setVictoryMode] = useState(false);
+
   const attackButtonBounds = useRef({ x: 400, y: 0, width: 160, height: 40 });
   const npcSpriteSheets = useRef({});
   const draggingItem = useRef(null);
   const draggingOffset = useRef({ x: 0, y: 0 });
 
-  // Create refs to mirror state
+  const npcsRef = useRef(npcs);
+
+  useEffect(() => {
+    npcsRef.current = npcs;
+  }, [npcs]);
+
   const showInventoryRef = useRef(showInventory);
   const gamePausedRef = useRef(gamePaused);
   const inventoryRef = useRef(inventory);
   const showChestRef = useRef(showChest);
   const currentChestRef = useRef(currentChest);
+  const isPausedRef = useRef(isPaused);
+  const isExitingRef = useRef(isExiting);
+  const battleModeRef = useRef(battleMode);
+  const actionCooldownRef = useRef(actionCooldown);
+  const victoryModeRef = useRef(victoryMode);
 
-  // Keep refs in sync with state
   useEffect(() => {
     showInventoryRef.current = showInventory;
   }, [showInventory]);
 
   useEffect(() => {
     gamePausedRef.current = gamePaused;
-    console.log('gamePaused updated to:', gamePaused);
   }, [gamePaused]);
 
   useEffect(() => {
@@ -62,12 +82,31 @@ const Game = () => {
 
   useEffect(() => {
     showChestRef.current = showChest;
-    console.log('showChest updated to:', showChest);
   }, [showChest]);
 
   useEffect(() => {
     currentChestRef.current = currentChest;
   }, [currentChest]);
+
+  useEffect(() => {
+    isPausedRef.current = isPaused;
+  }, [isPaused]);
+
+  useEffect(() => {
+    isExitingRef.current = isExiting;
+  }, [isExiting]);
+
+  useEffect(() => {
+    battleModeRef.current = battleMode;
+  }, [battleMode]);
+
+  useEffect(() => {
+    actionCooldownRef.current = actionCooldown;
+  }, [actionCooldown]);
+
+  useEffect(() => {
+    victoryModeRef.current = victoryMode;
+  }, [victoryMode]);
 
   const tileset = new Image();
   tileset.src = '/222.png';
@@ -75,72 +114,63 @@ const Game = () => {
   spriteSheet.src = '/hero.png';
 
   const CHARACTER_SPEED = 0.15;
-  const SPRITE_ANIMATION_SPEED = 6; // Decreased from 8 to 6 for faster sprite animation
+  const SPRITE_ANIMATION_SPEED = 6;
   const MOVE_COOLDOWN = 150;
   let lastMoveTime = 0;
-
-  const npcs = [
-    { x: 18 * TILE_SIZE, y: 4 * TILE_SIZE, map: 'tilemap1', type: 'npc', name: 'Mage Anna', dialogue: 'The rift is growing! ', hasTalked: false, frameX: 0, frameY: 0 },
-    { x: 5 * TILE_SIZE, y: 6 * TILE_SIZE, map: 'tilemap1', type: 'npc', name: 'Blacksmith Ben', dialogue: 'Greetings! Have you spoken to Mage Anna?', hasTalked: false, itemToGive: { id: 2, name: 'Crystal Sword', description: 'A powerful sword forged to defeat the Rift Lord.' }, frameX: 0, frameY: 0 },
-    { x: 17 * TILE_SIZE, y: 12 * TILE_SIZE, map: 'tilemap3', type: 'boss', name: 'Rift Lord', health: 100, frameX: 0, frameY: 0 },
-  ];
 
   const items = {
     2: { id: 2, name: 'Iron Sword', description: 'A sturdy iron sword for close combat.' },
     25: { id: 25, name: 'Magical Crystal', description: 'A glowing crystal needed to seal the rift.' },
     37: { id: 37, name: 'Wooden Shield', description: 'A basic shield for defense.' },
-    101: { id: 101, name: 'Health Potion', description: 'Restores 20 health when used.' },
     102: { id: 102, name: 'Leather Armor', description: 'Light armor for basic protection.' },
     103: { id: 103, name: 'Gold Coin', description: 'A shiny coin worth 10 gold.' },
     104: { id: 104, name: 'Mana Crystal', description: 'Restores 15 mana when used.' },
     105: { id: 105, name: 'Steel Dagger', description: 'A sharp dagger for quick attacks.' },
     106: { id: 106, name: 'Fire Scroll', description: 'Casts a fire spell when used.' },
     107: { id: 107, name: 'Silver Ring', description: 'Increases magic resistance by 5%.' },
+    108: { id: 108, name: 'Elixir of Vitality', description: 'Restores 20 health when consumed.' },
+    109: { id: 109, name: 'Draught of Might', description: 'Boosts attack power by 5 for 30 seconds.' },
+  };
+
+  const getRandomItems = () => {
+    const possibleItems = [
+      items[2], items[102], items[103], items[104], items[105], items[106], items[107],
+      items[108], items[109],
+    ];
+    const numItems = Math.floor(Math.random() * 3) + 2;
+    const shuffled = possibleItems.sort(() => 0.5 - Math.random());
+    const selectedItems = shuffled.slice(0, numItems);
+
+    // Increased chance for Elixir of Vitality (ID 108) to 30%
+    const includeExtraElixir = Math.random() < 0.30;
+    if (includeExtraElixir) {
+      selectedItems.push(items[108]);
+    }
+    // Additional chance for second Elixir of Vitality to 20%
+    const includeSecondElixir = Math.random() < 0.20;
+    if (includeSecondElixir) {
+      selectedItems.push(items[108]);
+    }
+
+    // Increased chance for Draught of Might (ID 109) to 30%
+    const includeExtraDraught = Math.random() < 0.30;
+    if (includeExtraDraught) {
+      selectedItems.push(items[109]);
+    }
+    // Additional chance for second Draught of Might to 20%
+    const includeSecondDraught = Math.random() < 0.20;
+    if (includeSecondDraught) {
+      selectedItems.push(items[109]);
+    }
+
+    return selectedItems;
   };
 
   const chests = [
-    { 
-      x: 4 * TILE_SIZE, 
-      y: 3 * TILE_SIZE, 
-      map: 'tilemap1', 
-      tileId: 36, 
-      contents: [
-        items[2],   // Iron Sword
-        items[102], // Leather Armor
-        items[103], // Gold Coin
-      ] 
-    },
-    { 
-      x: 14 * TILE_SIZE, 
-      y: 5 * TILE_SIZE, 
-      map: 'tilemap2', 
-      tileId: 2, 
-      contents: [
-        items[101], // Health Potion
-        items[104], // Mana Crystal
-        items[105], // Steel Dagger
-      ] 
-    },
-    { 
-      x: 15 * TILE_SIZE, 
-      y: 4 * TILE_SIZE, 
-      map: 'tilemap3', 
-      tileId: 15, 
-      contents: [
-        items[37],  // Wooden Shield
-        items[106], // Fire Scroll
-      ] 
-    },
-    { 
-      x: 20 * TILE_SIZE, 
-      y: 4 * TILE_SIZE, 
-      map: 'tilemap3', 
-      tileId: 15, 
-      contents: [
-        items[37],  // Wooden Shield
-        items[107], // Silver Ring
-      ] 
-    },
+    { x: 4 * TILE_SIZE, y: 3 * TILE_SIZE, map: 'tilemap1', tileId: 36, contents: getRandomItems() },
+    { x: 14 * TILE_SIZE, y: 5 * TILE_SIZE, map: 'tilemap2', tileId: 2, contents: getRandomItems() },
+    { x: 15 * TILE_SIZE, y: 4 * TILE_SIZE, map: 'tilemap3', tileId: 15, contents: getRandomItems() },
+    { x: 20 * TILE_SIZE, y: 4 * TILE_SIZE, map: 'tilemap3', tileId: 15, contents: getRandomItems() },
   ];
 
   useEffect(() => {
@@ -153,14 +183,8 @@ const Game = () => {
     });
   }, []);
 
-  useEffect(() => {
-    console.log('showInventory state changed to:', showInventory);
-  }, [showInventory]);
-
   const setDialogueSync = (text) => {
-    console.log('setDialogueSync called with text:', text);
     dialogueRef.current = text;
-    console.log('Dialogue set instantly:', text);
   };
 
   const getCurrentMapData = () => {
@@ -177,16 +201,13 @@ const Game = () => {
     const tileY = Math.floor(newY / TILE_SIZE);
     const { map, overlay, secondOverlay } = getCurrentMapData();
 
-    if (tileX < 0 || tileX >= 30 || tileY < 0 || tileY >= 20) {
-      console.log(`Position (${tileX}, ${tileY}) is out of bounds`);
-      return false;
-    }
+    if (tileX < 0 || tileX >= 30 || tileY < 0 || tileY >= 20) return false;
 
     const baseTile = map[tileY][tileX];
     const overlayTile = overlay[tileY][tileX];
     const secondOverlayTile = secondOverlay[tileY][tileX];
 
-    const isOccupied = npcs.some(npc => 
+    const isOccupied = npcsRef.current.some(npc => 
       npc.map === currentMapRef.current && 
       Math.floor(npc.x / TILE_SIZE) === tileX && 
       Math.floor(npc.y / TILE_SIZE) === tileY
@@ -255,6 +276,18 @@ const Game = () => {
     }
   };
 
+  const bossTurn = (boss) => {
+    if (boss.health <= 0) return;
+    const damage = 15;
+    characterRef.current.health -= damage;
+    setBattleLog(prev => [...prev.slice(-4), `Boss attacks you back`]);
+    if (characterRef.current.health <= 0) {
+      setBattleLog(prev => [...prev.slice(-4), 'You die, restart the game']);
+      setBattleMode(false);
+      resetGameState();
+    }
+  };
+
   const checkInteraction = () => {
     const playerTileX = Math.floor(characterRef.current.x / TILE_SIZE);
     const playerTileY = Math.floor(characterRef.current.y / TILE_SIZE);
@@ -266,7 +299,6 @@ const Game = () => {
       { x: playerTileX + 1, y: playerTileY },
     ];
 
-    // Check for nearby chest
     const nearbyChest = chests.find(chest => 
       chest.map === currentMapRef.current &&
       adjacentTiles.some(tile => {
@@ -276,24 +308,18 @@ const Game = () => {
       })
     );
 
-    if (nearbyChest) {
-      if (dialogueRef.current !== `[Chest] Press J to open.`) {
-        setDialogueSync(`[Chest] Press J to open.`);
-      }
-
+    if (nearbyChest && !battleModeRef.current) {
       if (keysRef.current.j && !keysRef.current.jPressed) {
         keysRef.current.jPressed = true;
         setShowChest(true);
         setCurrentChest(nearbyChest);
+        setShowInventory(true);
         setGamePaused(true);
-        console.log('Opening chest, gamePaused set to true');
-        setDialogueSync('');
       }
-      return; // Prioritize chest interaction over NPC/boss
+      return;
     }
 
-    // Check for nearby NPC or boss
-    const nearbyNPC = npcs.find(npc => 
+    const nearbyNPC = npcsRef.current.find(npc => 
       npc.map === currentMapRef.current &&
       adjacentTiles.some(tile => {
         const npcTileX = Math.floor(npc.x / TILE_SIZE);
@@ -302,10 +328,9 @@ const Game = () => {
       })
     );
 
-    if (nearbyNPC) {
+    if (nearbyNPC && !battleModeRef.current) {
       if (nearbyNPC.type === 'npc') {
         if (dialogueRef.current !== `[${nearbyNPC.name}] Press J to talk.` && dialogueRef.current !== `${nearbyNPC.name}: ${nearbyNPC.dialogue}`) {
-          console.log('Showing NPC prompt:', `[${nearbyNPC.name}] Press J to talk.`);
           setDialogueSync(`[${nearbyNPC.name}] Press J to talk.`);
         }
         setShowAttackButton(false);
@@ -314,19 +339,33 @@ const Game = () => {
           keysRef.current.jPressed = true;
 
           if (dialogueRef.current === `[${nearbyNPC.name}] Press J to talk.`) {
-            nearbyNPC.hasTalked = true;
+            setNpcs(prev => {
+              const newNpcs = [...prev];
+              const npcIndex = newNpcs.findIndex(n => n.id === nearbyNPC.id);
+              newNpcs[npcIndex] = { ...newNpcs[npcIndex], hasTalked: true };
+              return newNpcs;
+            });
+
             let dialogueText = `${nearbyNPC.name}: ${nearbyNPC.dialogue}`;
 
             if (nearbyNPC.name === 'Mage Anna') {
               if (inventoryRef.current.some(item => item.id === 25)) {
                 dialogueText = `${nearbyNPC.name}: Thank you for finding the crystal! Please take it to Blacksmith Ben to forge a weapon.`;
                 setInventory(prev => prev.filter(item => item.id !== 25));
-                nearbyNPC.dialogue = 'Hurry, the rift is growing stronger!';
-                nearbyNPC.x = 22 * TILE_SIZE;
-                nearbyNPC.y = 4 * TILE_SIZE;
+                setNpcs(prev => {
+                  const newNpcs = [...prev];
+                  const npcIndex = newNpcs.findIndex(n => n.id === nearbyNPC.id);
+                  newNpcs[npcIndex] = {
+                    ...newNpcs[npcIndex],
+                    dialogue: 'Hurry, the rift is growing stronger!',
+                    x: 22 * TILE_SIZE,
+                    y: 4 * TILE_SIZE,
+                  };
+                  return newNpcs;
+                });
               }
             } else if (nearbyNPC.name === 'Blacksmith Ben') {
-              if (npcs[0].hasTalked && inventoryRef.current.some(item => item.id === 25)) {
+              if (npcsRef.current.find(n => n.name === 'Mage Anna').hasTalked && inventoryRef.current.some(item => item.id === 25)) {
                 dialogueText = `${nearbyNPC.name}: I see you have the crystal! I’ll forge a weapon for you.`;
                 if (nearbyNPC.itemToGive) {
                   setInventory(prev => {
@@ -336,54 +375,34 @@ const Game = () => {
                     return prev;
                   });
                   dialogueText += `\n${nearbyNPC.name}: Here, take this ${nearbyNPC.itemToGive.name}! It will help you defeat the Rift Lord.`;
-                  nearbyNPC.itemToGive = null;
-                  nearbyNPC.dialogue = 'Go to the rift in the south and defeat the Rift Lord!';
+                  setNpcs(prev => {
+                    const newNpcs = [...prev];
+                    const npcIndex = newNpcs.findIndex(n => n.id === nearbyNPC.id);
+                    newNpcs[npcIndex] = {
+                      ...newNpcs[npcIndex],
+                      itemToGive: null,
+                      dialogue: 'Go to the rift in the south and defeat the Rift Lord!',
+                    };
+                    return newNpcs;
+                  });
                 }
-              } else if (npcs[0].hasTalked) {
+              } else if (npcsRef.current.find(n => n.name === 'Mage Anna').hasTalked) {
                 dialogueText += '\nPlease find the magical crystal in the western cave.';
               }
             }
 
             setDialogueSync(dialogueText);
           } else {
-            console.log('Resetting to NPC prompt:', `[${nearbyNPC.name}] Press J to talk.`);
             setDialogueSync(`[${nearbyNPC.name}] Press J to talk.`);
           }
         }
-      } else if (nearbyNPC.type === 'boss') {
-        if (dialogueRef.current !== `[${nearbyNPC.name}] Fight me!` && dialogueRef.current !== `You attack the monster!` && dialogueRef.current !== `Monster attacks back!` && dialogueRef.current !== `${nearbyNPC.name} defeated!`) {
-          console.log('Showing boss prompt:', `[${nearbyNPC.name}] Fight me!`);
-          setDialogueSync(`[${nearbyNPC.name}] Fight me!`);
-        }
-        setShowAttackButton(true);
-
-        if (keysRef.current.j && !keysRef.current.jPressed) {
-          console.log('J pressed, attacking boss:', nearbyNPC.name);
-          keysRef.current.jPressed = true;
-
-          const hasCrystalSword = inventoryRef.current.some(item => item.id === 2);
-          const damage = hasCrystalSword ? 15 : 10;
-          nearbyNPC.health -= damage;
-          setDialogueSync(`You attack the monster${hasCrystalSword ? ' with the Crystal Sword' : ''}!`);
-
-          if (nearbyNPC.health > 0) {
-            characterRef.current.health -= 5;
-            setDialogueSync(`Monster attacks back!`);
-            setDialogueSync(`[${nearbyNPC.name}] Fight me!`);
-          } else {
-            setDialogueSync(`${nearbyNPC.name} defeated!`);
-            nearbyNPC.health = 0;
-            setShowAttackButton(false);
-          }
-        }
+      } else if (nearbyNPC.type === 'boss' && !nearbyNPC.defeated) {
+        setBattleMode(true);
+        setDialogueSync('');
+        setShowAttackButton(false);
       }
-    } else {
+    } else if (!nearbyNPC && !battleModeRef.current) {
       setDialogueSync('');
-      setShowAttackButton(false);
-    }
-
-    if (characterRef.current.health <= 0) {
-      setDialogueSync('Game Over! You died.');
       setShowAttackButton(false);
     }
 
@@ -393,34 +412,36 @@ const Game = () => {
   };
 
   useEffect(() => {
-    console.log('Key listener useEffect running');
-
     const handleKeyDown = (e) => {
       const key = e.key.toLowerCase();
-      console.log(`Key pressed: ${key}`);
       if (key in keysRef.current) keysRef.current[key] = true;
-      if (key === 'i') {
-        console.log('I key pressed, current showInventory:', showInventory, 'showChest:', showChest);
-        setShowInventory(prev => {
-          const newShowInventory = !prev;
-          console.log('showInventory toggled to:', newShowInventory);
-          return newShowInventory;
-        });
-
-        // If chest is open, close it
+      if (key === 'i' && !battleModeRef.current) {
+        setShowInventory(prev => !prev);
         if (showChest) {
           setShowChest(false);
           setCurrentChest(null);
-          console.log('Closing chest');
+          setShowInventory(false);
+          setGamePaused(false);
+          console.log('Closing chest - gamePaused should be false:', gamePaused);
+        } else {
+          setGamePaused(prev => !prev);
+          console.log('Toggling inventory - gamePaused:', !gamePaused);
         }
-
-        // Update gamePaused based on the new state of showInventory and showChest
-        setGamePaused(prev => {
-          const newShowInventory = !showInventoryRef.current;
-          const newGamePaused = newShowInventory || showChestRef.current;
-          console.log('Setting gamePaused to:', newGamePaused, 'newShowInventory:', newShowInventory, 'showChest:', showChestRef.current);
-          return newGamePaused;
-        });
+      }
+      if (key === 'escape') {
+        if (battleModeRef.current) {
+          setBattleMode(false);
+          setDialogueSync('Battle ended.');
+        } else {
+          setIsPaused(prev => !prev);
+          if (showInventory) setShowInventory(false);
+          if (showChest) {
+            setShowChest(false);
+            setCurrentChest(null);
+            setGamePaused(false);
+          }
+          setGamePaused(false);
+        }
       }
     };
 
@@ -448,7 +469,7 @@ const Game = () => {
       const chestBoxX = 180;
       const chestBoxY = 120;
       const chestBoxWidth = 300;
-      const chestBoxHeight = 400;
+      const chestBoxHeight = 450;
 
       currentChestRef.current.contents.forEach((item, index) => {
         const yPos = chestBoxY + 80 + index * 40;
@@ -487,7 +508,7 @@ const Game = () => {
       const inventoryBoxX = 480;
       const inventoryBoxY = 120;
       const inventoryBoxWidth = 300;
-      const inventoryBoxHeight = 400;
+      const inventoryBoxHeight = 450;
 
       if (
         mouseX >= inventoryBoxX &&
@@ -517,42 +538,203 @@ const Game = () => {
     };
   }, []);
 
+  const resetGameState = () => {
+    characterRef.current = {
+      x: 5 * TILE_SIZE,
+      y: 15 * TILE_SIZE,
+      frameX: 0,
+      frameY: 2,
+      frameCount: 0,
+      direction: 'down',
+      moving: false,
+      health: 100,
+      inventory: [],
+      targetX: 5 * TILE_SIZE,
+      targetY: 15 * TILE_SIZE,
+      moveProgress: 0,
+      powerBoost: 0,
+    };
+    setInventory([]);
+    setCollectedItems([]);
+    setShowAttackButton(false);
+    setShowInventory(false);
+    setShowChest(false);
+    setCurrentChest(null);
+    setGamePaused(false);
+    setIsPaused(false);
+    setBattleMode(false);
+    setActionCooldown(false);
+    setBattleLog([]);
+    setVictoryMode(false);
+    currentMapRef.current = 'tilemap1';
+    dialogueRef.current = '';
+    setNpcs([
+      { id: 'npc1', x: 18 * TILE_SIZE, y: 4 * TILE_SIZE, map: 'tilemap1', type: 'npc', name: 'Mage Anna', dialogue: 'The rift is growing! ', hasTalked: false, frameX: 0, frameY: 0 },
+      { id: 'npc2', x: 5 * TILE_SIZE, y: 6 * TILE_SIZE, map: 'tilemap1', type: 'npc', name: 'Blacksmith Ben', dialogue: 'Greetings! Have you spoken to Mage Anna?', hasTalked: false, itemToGive: { id: 2, name: 'Crystal Sword', description: 'A powerful sword forged to defeat the Rift Lord.' }, frameX: 0, frameY: 0 },
+      { id: 'boss1', x: 17 * TILE_SIZE, y: 12 * TILE_SIZE, map: 'tilemap3', type: 'boss', name: 'Rift Lord', health: 100, frameX: 0, frameY: 0, defeated: false },
+    ]);
+  };
+
   useEffect(() => {
     const handleCanvasClick = (e) => {
       const rect = canvasRef.current.getBoundingClientRect();
       const clickX = e.clientX - rect.left;
       const clickY = e.clientY - rect.top;
 
-      if (
-        showAttackButton &&
-        clickX >= attackButtonBounds.current.x &&
-        clickX <= attackButtonBounds.current.x + attackButtonBounds.current.width &&
-        clickY >= attackButtonBounds.current.y &&
-        clickY <= attackButtonBounds.current.y + attackButtonBounds.current.height
-      ) {
-        const nearbyNPC = npcs.find(npc => 
-          npc.map === currentMapRef.current &&
-          npc.type === 'boss' &&
-          Math.abs(Math.floor(characterRef.current.x / TILE_SIZE) - Math.floor(npc.x / TILE_SIZE)) <= 1 &&
-          Math.abs(Math.floor(characterRef.current.y / TILE_SIZE) - Math.floor(npc.y / TILE_SIZE)) <= 1
-        );
+      if (isPausedRef.current) {
+        const boxX = (canvasRef.current.width - 300) / 2;
+        const boxY = 120;
+        const buttonWidth = 260;
+        const buttonHeight = 40;
 
-        if (nearbyNPC) {
+        const resumeButton = { x: boxX + 20, y: boxY + 80, width: buttonWidth, height: buttonHeight };
+        if (clickX >= resumeButton.x && clickX <= resumeButton.x + resumeButton.width && clickY >= resumeButton.y && clickY <= resumeButton.y + resumeButton.height) {
+          setIsPaused(false);
+        }
+
+        const restartButton = { x: boxX + 20, y: boxY + 140, width: buttonWidth, height: buttonHeight };
+        if (clickX >= restartButton.x && clickX <= restartButton.x + restartButton.width && clickY >= restartButton.y && clickY <= restartButton.y + resumeButton.height) {
+          resetGameState();
+        }
+
+        const exitButton = { x: boxX + 20, y: boxY + 200, width: buttonWidth, height: buttonHeight };
+        if (clickX >= exitButton.x && clickX <= exitButton.x + exitButton.width && clickY >= exitButton.y && clickY <= exitButton.y + resumeButton.height) {
+          setIsExiting(true);
+          resetGameState();
+          setTimeout(() => {
+            if (onExitToMenu) onExitToMenu();
+          }, 500);
+        }
+        return;
+      }
+
+      if (battleModeRef.current && !actionCooldownRef.current) {
+        const boss = npcsRef.current.find(npc => npc.type === 'boss' && npc.map === currentMapRef.current);
+        console.log(`Boss in handleCanvasClick: ${boss.id}, Health: ${boss.health}`);
+        const boxX = (canvasRef.current.width - 300) / 2;
+        const boxY = (canvasRef.current.height - 350) / 2;
+        const buttonWidth = 260;
+        const buttonHeight = 40;
+
+        const attackButton = { x: boxX + 20, y: boxY + 80, width: buttonWidth, height: buttonHeight };
+        if (clickX >= attackButton.x && clickX <= attackButton.x + attackButton.width && clickY >= attackButton.y && clickY <= attackButton.y + attackButton.height) {
           const hasCrystalSword = inventoryRef.current.some(item => item.id === 2);
-          const damage = hasCrystalSword ? 15 : 10;
-          nearbyNPC.health -= damage;
-          setDialogueSync(`You attack the monster${hasCrystalSword ? ' with the Crystal Sword' : ''}!`);
-
-          if (nearbyNPC.health > 0) {
-            characterRef.current.health -= 5;
-            setDialogueSync(`Monster attacks back!`);
-            setDialogueSync(`[${nearbyNPC.name}] Fight me!`);
+          const baseDamage = hasCrystalSword ? 15 : 10;
+          setNpcs(prev => {
+            const newNpcs = [...prev];
+            const bossIndex = newNpcs.findIndex(n => n.id === boss.id);
+            newNpcs[bossIndex] = { ...newNpcs[bossIndex], health: Math.max(newNpcs[bossIndex].health - baseDamage, 0) };
+            console.log(`Boss ${newNpcs[bossIndex].id} health after attack: ${newNpcs[bossIndex].health}`);
+            return newNpcs;
+          });
+          setBattleLog(prev => [...prev.slice(-4), `You attack the boss`]);
+          const updatedBoss = npcsRef.current.find(n => n.id === boss.id);
+          if (updatedBoss.health <= 0) {
+            setNpcs(prev => {
+              const newNpcs = [...prev];
+              const bossIndex = newNpcs.findIndex(n => n.id === boss.id);
+              newNpcs[bossIndex] = { ...newNpcs[bossIndex], defeated: true };
+              return newNpcs;
+            });
+            setBattleLog(prev => [...prev.slice(-4), 'Rift Lord defeated!']);
+            setBattleMode(false);
+            setActionCooldown(false);
+            setVictoryMode(true);
+            setTimeout(() => {
+              setIsExiting(true);
+              resetGameState();
+              if (onExitToMenu) onExitToMenu();
+            }, 5000);
           } else {
-            setDialogueSync(`${nearbyNPC.name} defeated!`);
-            nearbyNPC.health = 0;
-            setShowAttackButton(false);
+            setActionCooldown(true);
+            setTimeout(() => {
+              bossTurn(updatedBoss);
+              setActionCooldown(false);
+            }, 1000);
           }
         }
+
+        const healButton = { x: boxX + 20, y: boxY + 140, width: buttonWidth, height: buttonHeight };
+        const hasElixir = inventoryRef.current.some(item => item.id === 108);
+        if (hasElixir && characterRef.current.health < 90 && clickX >= healButton.x && clickX <= healButton.x + healButton.width && clickY >= healButton.y && clickY <= healButton.y + healButton.height) {
+          const elixirIndex = inventoryRef.current.findIndex(item => item.id === 108);
+          characterRef.current.health = Math.min(characterRef.current.health + 20, 100);
+          setInventory(prev => prev.filter((_, i) => i !== elixirIndex));
+          setBattleLog(prev => [...prev.slice(-4), `You heal yourself with Elixir of Vitality`]);
+        }
+
+        const specialButton = { x: boxX + 20, y: boxY + 200, width: buttonWidth, height: buttonHeight };
+        const hasDraught = inventoryRef.current.some(item => item.id === 109);
+        if (hasDraught && clickX >= specialButton.x && clickX <= specialButton.x + specialButton.width && clickY >= specialButton.y && clickY <= specialButton.y + healButton.height) {
+          const hasCrystalSword = inventoryRef.current.some(item => item.id === 2);
+          const baseDamage = hasCrystalSword ? 15 : 10;
+          const totalDamage = baseDamage * 2;
+          setNpcs(prev => {
+            const newNpcs = [...prev];
+            const bossIndex = newNpcs.findIndex(n => n.id === boss.id);
+            newNpcs[bossIndex] = { ...newNpcs[bossIndex], health: Math.max(newNpcs[bossIndex].health - totalDamage, 0) };
+            console.log(`Boss ${newNpcs[bossIndex].id} health after special attack: ${newNpcs[bossIndex].health}`);
+            return newNpcs;
+          });
+          const draughtIndex = inventoryRef.current.findIndex(item => item.id === 109);
+          setInventory(prev => prev.filter((_, i) => i !== draughtIndex));
+          setBattleLog(prev => [...prev.slice(-4), `You deal extra damage`]);
+          const updatedBoss = npcsRef.current.find(n => n.id === boss.id);
+          if (updatedBoss.health <= 0) {
+            setNpcs(prev => {
+              const newNpcs = [...prev];
+              const bossIndex = newNpcs.findIndex(n => n.id === boss.id);
+              newNpcs[bossIndex] = { ...newNpcs[bossIndex], defeated: true };
+              return newNpcs;
+            });
+            setBattleLog(prev => [...prev.slice(-4), 'Rift Lord defeated!']);
+            setBattleMode(false);
+            setActionCooldown(false);
+            setVictoryMode(true);
+            setTimeout(() => {
+              setIsExiting(true);
+              resetGameState();
+              if (onExitToMenu) onExitToMenu();
+            }, 5000);
+          } else {
+            setActionCooldown(true);
+            setTimeout(() => {
+              bossTurn(updatedBoss);
+              setActionCooldown(false);
+            }, 1000);
+          }
+        }
+
+        const killMyselfButton = { x: boxX + 20, y: boxY + 260, width: buttonWidth, height: buttonHeight };
+        if (clickX >= killMyselfButton.x && clickX <= killMyselfButton.x + killMyselfButton.width && clickY >= killMyselfButton.y && clickY <= killMyselfButton.y + killMyselfButton.height) {
+          resetGameState();
+          setBattleMode(false);
+          setBattleLog(prev => [...prev.slice(-4), 'You killed yourself. Game restarted.']);
+        }
+      }
+
+      if (showInventoryRef.current && !isPausedRef.current && !battleModeRef.current) {
+        const boxX = showChestRef.current ? 480 : (canvasRef.current.width - 300) / 2;
+        const boxY = 120;
+        inventoryRef.current.forEach((item, index) => {
+          const yPos = boxY + 80 + index * 40;
+          const itemBounds = { x: boxX + 20, y: yPos - 20, width: 200, height: 30 };
+          if (clickX >= itemBounds.x && clickX <= itemBounds.x + itemBounds.width && clickY >= itemBounds.y && clickY <= itemBounds.y + itemBounds.height) {
+            if (item.id === 108) {
+              characterRef.current.health = Math.min(characterRef.current.health + 20, 100);
+              setInventory(prev => prev.filter((_, i) => i !== index));
+              setDialogueSync('Used Elixir of Vitality: +20 HP');
+            } else if (item.id === 109) {
+              characterRef.current.powerBoost = 5;
+              setInventory(prev => prev.filter((_, i) => i !== index));
+              setDialogueSync('Used Draught of Might: +5 Attack for 30s');
+              setTimeout(() => {
+                characterRef.current.powerBoost = 0;
+                setDialogueSync('Draught of Might effect ended.');
+              }, 30000);
+            }
+          }
+        });
       }
     };
 
@@ -560,15 +742,12 @@ const Game = () => {
     return () => {
       canvasRef.current.removeEventListener('click', handleCanvasClick);
     };
-  }, [showAttackButton]);
+  }, [showAttackButton, isPaused, onExitToMenu]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
-    if (!ctx) {
-      console.error('Failed to get canvas context');
-      return;
-    }
+    if (!ctx) return;
     ctx.imageSmoothingEnabled = false;
 
     const drawTilemap = () => {
@@ -658,8 +837,8 @@ const Game = () => {
     };
 
     const drawNPCs = () => {
-      npcs.forEach(npc => {
-        if (npc.map === currentMapRef.current && (npc.type === 'npc' || npc.health > 0)) {
+      npcsRef.current.forEach(npc => {
+        if (npc.map === currentMapRef.current && (npc.type === 'npc' || (npc.type === 'boss' && !npc.defeated))) {
           const spriteSheetToUse = npc.spriteSrc && npcSpriteSheets.current[npc.spriteSrc] ? npcSpriteSheets.current[npc.spriteSrc] : spriteSheet;
           if (!spriteSheetToUse.complete) return;
 
@@ -685,11 +864,10 @@ const Game = () => {
     };
 
     const updateCharacter = (deltaTime) => {
-      if (transitioningRef.current || gamePausedRef.current) return;
+      if (transitioningRef.current || gamePausedRef.current || isPausedRef.current || battleModeRef.current || victoryModeRef.current) return;
 
       const currentTime = Date.now();
 
-      // If the character is in the middle of a move, continue moving towards the target
       if (characterRef.current.moveProgress > 0 && characterRef.current.moveProgress < 1) {
         characterRef.current.moveProgress += CHARACTER_SPEED * (deltaTime / 16.67);
         if (characterRef.current.moveProgress >= 1) {
@@ -703,7 +881,6 @@ const Game = () => {
         }
       }
 
-      // Only allow a new move if not currently moving and cooldown has passed
       if (characterRef.current.moveProgress > 0 || currentTime - lastMoveTime < MOVE_COOLDOWN) return;
 
       let newTargetX = characterRef.current.targetX;
@@ -738,7 +915,7 @@ const Game = () => {
       if (isMoving && isWalkable(newTargetX, newTargetY)) {
         characterRef.current.targetX = newTargetX;
         characterRef.current.targetY = newTargetY;
-        characterRef.current.moveProgress = 0.01; // Start the movement
+        characterRef.current.moveProgress = 0.01;
         characterRef.current.moving = true;
         lastMoveTime = currentTime;
 
@@ -749,11 +926,7 @@ const Game = () => {
 
         if (overlayTile && !collectedItems.includes(`${tileY}-${tileX}`)) {
           if (overlayTile === 25) {
-            setInventory(prev => {
-              const newInventory = [...prev, items[25]];
-              console.log('Inventory updated:', newInventory);
-              return newInventory;
-            });
+            setInventory(prev => [...prev, items[25]]);
             setCollectedItems(prev => [...prev, `${tileY}-${tileX}`]);
             setDialogueSync('You found the Magical Crystal!');
             overlay[tileY][tileX] = null;
@@ -775,47 +948,44 @@ const Game = () => {
     };
 
     const drawHealthBars = () => {
-      // Player's health bar at the bottom left
+      ctx.save();
+      ctx.resetTransform();
+      ctx.textAlign = 'left';
+
       ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-      ctx.fillRect(50, 580, 200, 30); // Moved from y=50 to y=580
+      ctx.fillRect(50, 580, 200, 30);
       ctx.fillStyle = 'red';
       const playerHealthWidth = (characterRef.current.health / 100) * 180;
-      ctx.fillRect(60, 590, playerHealthWidth, 10); // Adjusted y from 60 to 590
+      ctx.fillRect(60, 590, playerHealthWidth, 10);
       ctx.fillStyle = 'white';
       ctx.font = '16px Arial';
-      ctx.fillText(`Player HP: ${characterRef.current.health}`, 60, 605); // Adjusted y from 75 to 605
+      ctx.fillText(`Player HP: ${characterRef.current.health}`, 60, 605);
 
-      // Boss's health bar at the bottom right (if applicable)
-      const nearbyBoss = npcs.find(npc => 
-        npc.map === currentMapRef.current &&
-        npc.type === 'boss' &&
-        Math.abs(Math.floor(characterRef.current.x / TILE_SIZE) - Math.floor(npc.x / TILE_SIZE)) <= 1 &&
-        Math.abs(Math.floor(characterRef.current.y / TILE_SIZE) - Math.floor(npc.y / TILE_SIZE)) <= 1
+      const boss = npcsRef.current.find(npc => 
+        npc.type === 'boss' && 
+        npc.map === currentMapRef.current && 
+        !npc.defeated
       );
-
-      if (nearbyBoss && nearbyBoss.health > 0) {
+      if (boss && battleModeRef.current) {
+        console.log(`Drawing boss ${boss.id}, Health: ${boss.health}`);
+        ctx.fillStyle = 'black';
+        ctx.fillRect(710, 580, 200, 30);
         ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-        ctx.fillRect(710, 580, 200, 30); // Moved from y=50 to y=580
+        ctx.fillRect(710, 580, 200, 30);
         ctx.fillStyle = 'red';
-        const bossHealthWidth = (nearbyBoss.health / 100) * 180;
-        ctx.fillRect(720, 590, bossHealthWidth, 10); // Adjusted y from 60 to 590
+        const bossHealthWidth = (boss.health / 100) * 180;
+        console.log(`Boss ${boss.id} health width: ${bossHealthWidth}`);
+        ctx.fillRect(720, 590, bossHealthWidth, 10);
         ctx.fillStyle = 'white';
         ctx.font = '16px Arial';
-        ctx.fillText(`Boss HP: ${nearbyBoss.health}`, 720, 605); // Adjusted y from 75 to 605
+        ctx.fillText(`Boss HP: ${boss.health}`, 720, 605);
       }
+
+      ctx.restore();
     };
 
     const drawDialogue = () => {
-      if (!ctx) {
-        console.error('Canvas context (ctx) is not defined in drawDialogue');
-        return;
-      }
-
-      let dialogueBoxHeight = 0;
-
       if (dialogueRef.current) {
-        console.log('Drawing dialogue:', dialogueRef.current);
-
         const gradient = ctx.createLinearGradient(50, 400, 50, 500);
         gradient.addColorStop(0, 'rgba(20, 30, 60, 0.9)');
         gradient.addColorStop(1, 'rgba(40, 60, 120, 0.9)');
@@ -834,36 +1004,105 @@ const Game = () => {
         ctx.shadowBlur = 3;
         ctx.fillText(dialogueRef.current, 70, 450);
         ctx.shadowColor = 'transparent';
-
-        dialogueBoxHeight += 100;
-      }
-
-      if (showAttackButton) {
-        attackButtonBounds.current.y = 400 + dialogueBoxHeight;
-        ctx.fillStyle = 'rgba(255, 0, 0, 0.7)';
-        ctx.fillRect(attackButtonBounds.current.x, attackButtonBounds.current.y, attackButtonBounds.current.width, attackButtonBounds.current.height);
-        ctx.strokeStyle = 'white';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(attackButtonBounds.current.x, attackButtonBounds.current.y, attackButtonBounds.current.width, attackButtonBounds.current.height);
-        ctx.fillStyle = 'white';
-        ctx.font = '16px Arial';
-        ctx.fillText('Attack (J)', attackButtonBounds.current.x + 30, attackButtonBounds.current.y + 28);
-        dialogueBoxHeight += 50;
       }
     };
 
-    const drawInventoryScreen = () => {
-      console.log('drawInventoryScreen called');
-      if (!ctx) {
-        console.error('Canvas context (ctx) is not defined in drawInventoryScreen');
-        return;
-      }
-
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    const drawBattleMenu = () => {
+      if (!battleModeRef.current) return;
 
       const boxWidth = 300;
-      const boxHeight = 400;
+      const boxHeight = 350;
+      const boxX = (canvas.width - boxWidth) / 2;
+      const boxY = (canvas.height - boxHeight) / 2;
+
+      const gradient = ctx.createLinearGradient(boxX, boxY, boxX, boxY + boxHeight);
+      gradient.addColorStop(0, 'rgba(50, 0, 0, 0.9)');
+      gradient.addColorStop(1, 'rgba(100, 0, 0, 0.9)');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
+
+      ctx.strokeStyle = 'red';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
+
+      ctx.fillStyle = '#FF4500';
+      ctx.font = '24px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('Battle Menu', boxX + boxWidth / 2, boxY + 40);
+
+      const buttonWidth = 260;
+      const buttonHeight = 40;
+      const buttonX = boxX + 20;
+      const buttonSpacing = 60;
+
+      ctx.fillStyle = actionCooldownRef.current ? 'rgba(128, 128, 128, 0.7)' : 'rgba(255, 0, 0, 0.7)';
+      ctx.fillRect(buttonX, boxY + 80, buttonWidth, buttonHeight);
+      ctx.strokeStyle = 'white';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(buttonX, boxY + 80, buttonWidth, buttonHeight);
+      ctx.fillStyle = 'white';
+      ctx.font = '18px Arial';
+      ctx.fillText('Attack', buttonX + buttonWidth / 2, boxY + 105);
+
+      const hasElixir = inventoryRef.current.some(item => item.id === 108);
+      ctx.fillStyle = hasElixir && characterRef.current.health < 90 ? 'rgba(0, 128, 0, 0.7)' : 'rgba(128, 128, 128, 0.7)';
+      ctx.fillRect(buttonX, boxY + 80 + buttonSpacing, buttonWidth, buttonHeight);
+      ctx.strokeStyle = 'white';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(buttonX, boxY + 80 + buttonSpacing, buttonWidth, buttonHeight);
+      ctx.fillStyle = 'white';
+      ctx.font = '18px Arial';
+      ctx.fillText('Heal', buttonX + buttonWidth / 2, boxY + 105 + buttonSpacing);
+
+      const hasDraught = inventoryRef.current.some(item => item.id === 109);
+      ctx.fillStyle = hasDraught && !actionCooldownRef.current ? 'rgba(0, 0, 255, 0.7)' : 'rgba(128, 128, 128, 0.7)';
+      ctx.fillRect(buttonX, boxY + 80 + buttonSpacing * 2, buttonWidth, buttonHeight);
+      ctx.strokeStyle = 'white';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(buttonX, boxY + 80 + buttonSpacing * 2, buttonWidth, buttonHeight);
+      ctx.fillStyle = 'white';
+      ctx.font = '18px Arial';
+      ctx.fillText('Special', buttonX + buttonWidth / 2, boxY + 105 + buttonSpacing * 2);
+
+      ctx.fillStyle = 'rgba(255, 165, 0, 0.7)';
+      ctx.fillRect(buttonX, boxY + 80 + buttonSpacing * 3, buttonWidth, buttonHeight);
+      ctx.strokeStyle = 'white';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(buttonX, boxY + 80 + buttonSpacing * 3, buttonWidth, buttonHeight);
+      ctx.fillStyle = 'white';
+      ctx.font = '18px Arial';
+      ctx.fillText('Kill Myself', buttonX + buttonWidth / 2, boxY + 105 + buttonSpacing * 3);
+
+      ctx.textAlign = 'left';
+    };
+
+    const drawBattleLog = () => {
+      if (!battleModeRef.current) return;
+
+      const logX = (canvas.width - 300) / 2 - 220;
+      const logY = (canvas.height - 350) / 2;
+      const logWidth = 200;
+      const logHeight = 350;
+
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+      ctx.fillRect(logX, logY, logWidth, logHeight);
+      ctx.strokeStyle = 'white';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(logX, logY, logWidth, logHeight);
+
+      ctx.fillStyle = 'white';
+      ctx.font = '16px Arial';
+      ctx.textAlign = 'left';
+      battleLog.slice(-5).forEach((entry, index) => {
+        ctx.fillText(entry, logX + 10, logY + 40 + index * 40);
+      });
+    };
+
+    const drawInventoryScreen = () => {
+      if (!showInventoryRef.current) return;
+
+      const boxWidth = 300;
+      const boxHeight = 450;
       const boxX = showChestRef.current ? 480 : (canvas.width - boxWidth) / 2;
       const boxY = 120;
 
@@ -903,16 +1142,10 @@ const Game = () => {
     };
 
     const drawChestScreen = () => {
-      if (!ctx) {
-        console.error('Canvas context (ctx) is not defined in drawChestScreen');
-        return;
-      }
-
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      if (!showChestRef.current) return;
 
       const boxWidth = 300;
-      const boxHeight = 400;
+      const boxHeight = 450;
       const boxX = 180;
       const boxY = 120;
 
@@ -960,35 +1193,148 @@ const Game = () => {
       }
     };
 
+    const drawPauseMenu = () => {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const boxWidth = 300;
+      const boxHeight = 300;
+      const boxX = (canvas.width - boxWidth) / 2;
+      const boxY = 120;
+
+      const gradient = ctx.createLinearGradient(boxX, boxY, boxX, boxY + boxHeight);
+      gradient.addColorStop(0, 'rgba(20, 30, 60, 0.9)');
+      gradient.addColorStop(1, 'rgba(40, 60, 120, 0.9)');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
+
+      ctx.strokeStyle = 'gold';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
+
+      ctx.fillStyle = '#F0E68C';
+      ctx.font = '24px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('Paused (Esc to Resume)', boxX + boxWidth / 2, boxY + 40);
+
+      const buttonWidth = 260;
+      const buttonHeight = 40;
+      const buttonX = boxX + 20;
+
+      ctx.fillStyle = 'rgba(0, 128, 0, 0.7)';
+      ctx.fillRect(buttonX, boxY + 80, buttonWidth, buttonHeight);
+      ctx.strokeStyle = 'white';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(buttonX, boxY + 80, buttonWidth, buttonHeight);
+      ctx.fillStyle = 'white';
+      ctx.font = '18px Arial';
+      ctx.fillText('Resume', buttonX + buttonWidth / 2, boxY + 105);
+
+      ctx.fillStyle = 'rgba(255, 165, 0, 0.7)';
+      ctx.fillRect(buttonX, boxY + 140, buttonWidth, buttonHeight);
+      ctx.strokeStyle = 'white';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(buttonX, boxY + 140, buttonWidth, buttonHeight);
+      ctx.fillStyle = 'white';
+      ctx.font = '18px Arial';
+      ctx.fillText('Restart', buttonX + buttonWidth / 2, boxY + 165);
+
+      ctx.fillStyle = 'rgba(255, 0, 0, 0.7)';
+      ctx.fillRect(buttonX, boxY + 200, buttonWidth, buttonHeight);
+      ctx.strokeStyle = 'white';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(buttonX, boxY + 200, buttonWidth, buttonHeight);
+      ctx.fillStyle = 'white';
+      ctx.font = '18px Arial';
+      ctx.fillText('Exit to Main Menu', buttonX + buttonWidth / 2, boxY + 225);
+
+      ctx.textAlign = 'left';
+    };
+
+    const drawVictoryScreen = () => {
+      if (!victoryModeRef.current) return;
+
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const boxWidth = 400;
+      const boxHeight = 200;
+      const boxX = (canvas.width - boxWidth) / 2;
+      const boxY = (canvas.height - boxHeight) / 2;
+
+      const gradient = ctx.createLinearGradient(boxX, boxY, boxX, boxY + boxHeight);
+      gradient.addColorStop(0, 'rgba(20, 60, 20, 0.9)');
+      gradient.addColorStop(1, 'rgba(40, 120, 40, 0.9)');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
+
+      ctx.strokeStyle = 'gold';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
+
+      ctx.fillStyle = '#F0E68C';
+      ctx.font = '30px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('Victory!', boxX + boxWidth / 2, boxY + 60);
+      ctx.font = '20px Arial';
+      ctx.fillText('The Rift Lord is defeated!', boxX + boxWidth / 2, boxY + 100);
+      ctx.fillText('Returning to main menu...', boxX + boxWidth / 2, boxY + 140);
+
+      ctx.textAlign = 'left';
+    };
+
     const gameLoop = (timestamp) => {
       if (!lastTimestampRef.current) lastTimestampRef.current = timestamp;
       const deltaTime = timestamp - lastTimestampRef.current;
       lastTimestampRef.current = timestamp;
 
+      if (isExitingRef.current) {
+        ctx.fillStyle = 'black';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        return;
+      }
+
+      console.log('Clearing canvas');
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+      console.log('Drawing tilemap');
       drawTilemap();
+      console.log('Drawing NPCs');
       drawNPCs();
+      console.log('Updating character');
       updateCharacter(deltaTime);
+      console.log('Drawing character');
       drawCharacter(characterRef.current.x, characterRef.current.y, characterRef.current.frameX, characterRef.current.frameY);
 
       if (transitioningRef.current) {
+        console.log('Drawing transition');
         ctx.fillStyle = `rgba(0, 0, 0, ${transitionAlphaRef.current})`;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         updateTransition();
       }
 
+      console.log('Drawing health bars');
       drawHealthBars();
+
+      console.log('Drawing dialogue');
       drawDialogue();
-
-      if (showInventoryRef.current) {
-        console.log('Drawing inventory screen, inventory:', inventoryRef.current);
-        drawInventoryScreen();
+      console.log('Drawing chest screen');
+      drawChestScreen();
+      console.log('Drawing inventory screen');
+      drawInventoryScreen();
+      if (battleModeRef.current) {
+        console.log('Drawing battle log');
+        drawBattleLog();
+        console.log('Drawing battle menu');
+        drawBattleMenu();
       }
-
-      if (showChestRef.current) {
-        drawChestScreen();
-        drawInventoryScreen();
+      if (isPausedRef.current) {
+        console.log('Drawing pause menu');
+        drawPauseMenu();
+      }
+      if (victoryModeRef.current) {
+        console.log('Drawing victory screen');
+        drawVictoryScreen();
       }
 
       requestAnimationFrame(gameLoop);
@@ -997,15 +1343,13 @@ const Game = () => {
     const startGame = () => {
       if (tileset.complete && spriteSheet.complete) {
         requestAnimationFrame(gameLoop);
-      } else {
-        console.log('Waiting for assets to load...');
       }
     };
 
     tileset.onload = startGame;
     spriteSheet.onload = startGame;
     startGame();
-  }, []);
+  }, [battleLog, battleMode]);
 
   return (
     <canvas
@@ -1013,11 +1357,8 @@ const Game = () => {
       width={960}
       height={640}
       tabIndex={0}
-      style={{ border: '1px solid white', display: 'block' }}
-      onClick={() => {
-        canvasRef.current.focus();
-        console.log('Canvas focused');
-      }}
+      style={{ border: "1px solid white", display: "block" }}
+      onClick={() => canvasRef.current.focus()}
     />
   );
 };
